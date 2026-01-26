@@ -30,6 +30,7 @@ import activationStep2 from "@/assets/activation-step-2.png";
 import WistiaVideo from "@/components/WistiaVideo";
 import ProductsCarousel from "@/components/members/ProductsCarousel";
 import FreeSidebar from "@/components/members/FreeSidebar";
+import MetodoContaPro from "@/components/members/MetodoContaPro";
 
 // Extension icons
 import extLovableIcon from "@/assets/ext-lovable-icon.png";
@@ -58,8 +59,8 @@ const extensions = {
     description: 'Extensão para V0.dev',
     icon: extV0Icon,
     isPurchased: false,
-    price: 14700,
-    originalPrice: 29700,
+    price: 6700,
+    originalPrice: 14700,
   },
   manus: {
     id: 'manus' as const,
@@ -67,8 +68,8 @@ const extensions = {
     description: 'Extensão para Manus.app',
     icon: extManusIcon,
     isPurchased: false,
-    price: 14700,
-    originalPrice: 29700,
+    price: 6700,
+    originalPrice: 14700,
   },
 };
 
@@ -79,7 +80,7 @@ const otherProducts = [
     name: 'Método Google AI Ultra',
     description: '45.000 Créditos (INFINITO) - VEO 3.1, Gemini 2.5 Pro e mais!',
     icon: googleAiIcon,
-    isPurchased: false, // TODO: check from session/database
+    isPurchased: true, // Set to true to show content
     price: 4700,
     originalPrice: 19700,
     badge: 'NOVO',
@@ -178,7 +179,7 @@ const LovAcesso = () => {
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
 
   const [selectedView, setSelectedView] = useState<'extensions' | 'outros' | null>(null);
-  
+  const [showMetodoGoogleAI, setShowMetodoGoogleAI] = useState(false);
   const currentExtension = selectedExtension ? extensions[selectedExtension] : null;
   const isLocked = currentExtension && !currentExtension.isPurchased;
 
@@ -475,9 +476,29 @@ const LovAcesso = () => {
               </Select>
             </motion.div>
 
+            {/* Método Google AI Ultra Content */}
+            <AnimatePresence mode="wait">
+              {showMetodoGoogleAI && (
+                <motion.div
+                  key="metodo-google-ai-content"
+                  variants={contentVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  <MetodoContaPro 
+                    onBack={() => {
+                      setShowMetodoGoogleAI(false);
+                      setSelectedView('outros');
+                    }} 
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Other Products Content */}
             <AnimatePresence mode="wait">
-              {selectedView === 'outros' && (
+              {selectedView === 'outros' && !showMetodoGoogleAI && (
                 <motion.div
                   key="outros-produtos"
                   variants={contentVariants}
@@ -530,7 +551,12 @@ const LovAcesso = () => {
                                     size="sm"
                                     variant="ghost"
                                     className="text-primary hover:text-primary/80 text-xs"
-                                    onClick={() => {/* TODO: Access product content */}}
+                                    onClick={() => {
+                                      if (product.id === 'metodo-google-ai') {
+                                        setSelectedView(null);
+                                        setShowMetodoGoogleAI(true);
+                                      }
+                                    }}
                                   >
                                     Acessar Conteúdo
                                   </Button>

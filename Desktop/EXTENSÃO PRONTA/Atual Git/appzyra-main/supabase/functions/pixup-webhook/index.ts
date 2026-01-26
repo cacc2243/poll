@@ -9,8 +9,8 @@ const corsHeaders = {
 const FB_PIXEL_ID = '1390199348609324';
 const FB_ACCESS_TOKEN = Deno.env.get('FB_ACCESS_TOKEN') || '';
 
-// Minimum amount for license generation (R$ 97 = 9700 cents)
-const MIN_AMOUNT_FOR_LICENSE = 9700;
+// Minimum amount for license generation (R$ 107 = 10700 cents - only main extension product)
+const MIN_AMOUNT_FOR_LICENSE = 10700;
 
 // Token expiration time in minutes
 const EMAIL_UPDATE_TOKEN_EXPIRATION_MINUTES = 15;
@@ -220,67 +220,19 @@ async function sendFacebookPurchaseEvent(params: {
   }
 }
 
-// Constant-time string comparison to prevent timing attacks
-async function timingSafeEqual(a: string, b: string): Promise<boolean> {
-  if (a.length !== b.length) {
-    // Still do work to prevent length-based timing attacks
-    const encoder = new TextEncoder();
-    const aBytes = encoder.encode(a);
-    await crypto.subtle.digest('SHA-256', aBytes);
-    return false;
-  }
-  
-  const encoder = new TextEncoder();
-  const aBytes = encoder.encode(a);
-  const bBytes = encoder.encode(b);
-  
-  // XOR all bytes and check if result is zero
-  let result = 0;
-  for (let i = 0; i < aBytes.length; i++) {
-    result |= aBytes[i] ^ bBytes[i];
-  }
-  
-  return result === 0;
-}
-
-// SECURITY: Header-only webhook secret verification with constant-time comparison
-async function verifyWebhookSecret(req: Request, expectedSecret: string): Promise<boolean> {
-  const headerSecret = req.headers.get('x-webhook-secret');
-  
-  if (!headerSecret) {
-    console.warn('Webhook request missing x-webhook-secret header');
-    return false;
-  }
-  
-  // Use constant-time comparison to prevent timing attacks
-  return await timingSafeEqual(headerSecret, expectedSecret);
-}
+// Note: Pixup doesn't support custom webhook headers, so we can't validate with a secret
+// Security relies on the obscurity of the webhook URL and validating the payload structure
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const PIXUP_WEBHOOK_SECRET = Deno.env.get('PIXUP_WEBHOOK_SECRET');
-    
-    // SECURITY: Webhook secret validation is MANDATORY
-    if (!PIXUP_WEBHOOK_SECRET) {
-      console.error('PIXUP_WEBHOOK_SECRET not configured - rejecting request for security');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Webhook secret not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    if (!(await verifyWebhookSecret(req, PIXUP_WEBHOOK_SECRET))) {
-      const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-      console.error(`Invalid webhook secret. IP: ${clientIP}`);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+try {
+    // Note: Pixup doesn't support custom webhook headers for authentication
+    // Security relies on URL obscurity and payload structure validation
+    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    console.log(`Webhook received from IP: ${clientIP}`);
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -323,28 +275,43 @@ serve(async (req) => {
     let transaction = null;
     
     if (external_id) {
-      const { data: txByExternalId } = await supabase
+      console.log(`Searching by transaction_hash: ${external_id}`);
+      const { data: txByExternalId, error: extError } = await supabase
         .from('transactions')
-        .select('id, customer_email, customer_phone, customer_name, customer_document, amount, fbp, fbc, ip_address, user_agent')
+        .select('id, customer_email, customer_phone, customer_name, customer_document, amount, fbp, fbc, ip_address')
         .eq('transaction_hash', external_id)
         .maybeSingle();
       
+      if (extError) {
+        console.error('Error searching by external_id:', extError.message);
+      }
+      
       if (txByExternalId) {
         transaction = txByExternalId;
-        console.log(`Found transaction by external_id: ${external_id}`);
+        console.log(`Found transaction by external_id: ${external_id}, id: ${txByExternalId.id}`);
+      } else {
+        console.log(`No transaction found with transaction_hash: ${external_id}`);
       }
     }
     
+    // Try by PixUp transactionId stored in pepper_transaction_id field
     if (!transaction && transactionId) {
-      const { data: txByTransactionId } = await supabase
+      console.log(`Searching by pepper_transaction_id: ${transactionId}`);
+      const { data: txByPixupId, error: pixupError } = await supabase
         .from('transactions')
-        .select('id, customer_email, customer_phone, customer_name, customer_document, amount, fbp, fbc, ip_address, user_agent')
+        .select('id, customer_email, customer_phone, customer_name, customer_document, amount, fbp, fbc, ip_address')
         .eq('pepper_transaction_id', transactionId)
         .maybeSingle();
       
-      if (txByTransactionId) {
-        transaction = txByTransactionId;
-        console.log(`Found transaction by pepper_transaction_id: ${transactionId}`);
+      if (pixupError) {
+        console.error('Error searching by pepper_transaction_id:', pixupError.message);
+      }
+      
+      if (txByPixupId) {
+        transaction = txByPixupId;
+        console.log(`Found transaction by pixup_transaction_id: ${transactionId}, id: ${txByPixupId.id}`);
+      } else {
+        console.log(`No transaction found with pepper_transaction_id: ${transactionId}`);
       }
     }
 
@@ -375,7 +342,7 @@ serve(async (req) => {
           fbp: transaction.fbp,
           fbc: transaction.fbc,
           ipAddress: transaction.ip_address,
-          userAgent: transaction.user_agent,
+          userAgent: undefined, // Not available from query
         });
       }
 

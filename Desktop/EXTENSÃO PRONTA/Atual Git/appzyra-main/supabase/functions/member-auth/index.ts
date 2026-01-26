@@ -37,22 +37,20 @@ serve(async (req) => {
       );
     }
 
-    // Check if user has access granted in transactions
-    const { data: transaction, error: txError } = await supabase
+    // First, check if user has ANY transaction with access granted
+    const { data: transactions, error: txError } = await supabase
       .from('transactions')
       .select('id, customer_email, customer_name, customer_document, customer_phone, access_granted, payment_status, license_key')
       .eq('customer_email', emailLower)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order('created_at', { ascending: false });
 
     if (txError) {
-      console.error('Error checking transaction:', txError);
+      console.error('Error checking transactions:', txError);
       throw txError;
     }
 
     // Check if email exists in transactions
-    if (!transaction) {
+    if (!transactions || transactions.length === 0) {
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -62,8 +60,9 @@ serve(async (req) => {
       );
     }
 
-    // Check if access is granted
-    if (!transaction.access_granted) {
+    // Check if ANY transaction has access granted
+    const hasAccess = transactions.some(tx => tx.access_granted === true);
+    if (!hasAccess) {
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -72,6 +71,17 @@ serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Find the transaction WITH a license key (prioritize this for extension download)
+    // If no license found, use the most recent transaction for user data
+    const transactionWithLicense = transactions.find(tx => tx.license_key !== null);
+    const mostRecentTransaction = transactions[0];
+    
+    // Use transaction with license for license_key, but most recent for user data
+    const primaryTransaction = transactionWithLicense || mostRecentTransaction;
+    const licenseKey = transactionWithLicense?.license_key || null;
+
+    console.log(`User ${emailLower} has ${transactions.length} transactions, license found: ${licenseKey ? 'yes' : 'no'}`);
 
     // Check if credentials already exist
     const { data: existingCreds, error: credsError } = await supabase
@@ -87,11 +97,11 @@ serve(async (req) => {
 
     // Get fingerprint from license_devices if license exists
     let fingerprint = null;
-    if (transaction?.license_key) {
+    if (licenseKey) {
       const { data: license } = await supabase
         .from('licenses')
         .select('id')
-        .eq('license_key', transaction.license_key)
+        .eq('license_key', licenseKey)
         .maybeSingle();
 
       if (license) {
@@ -117,11 +127,11 @@ serve(async (req) => {
     };
 
     const userData = {
-      name: transaction?.customer_name || null,
-      email: transaction?.customer_email || null,
-      document: formatCPF(transaction?.customer_document),
-      phone: transaction?.customer_phone || null,
-      license_key: transaction?.license_key || null,
+      name: mostRecentTransaction?.customer_name || null,
+      email: mostRecentTransaction?.customer_email || null,
+      document: formatCPF(mostRecentTransaction?.customer_document),
+      phone: mostRecentTransaction?.customer_phone || null,
+      license_key: licenseKey,
       fingerprint: fingerprint,
     };
 

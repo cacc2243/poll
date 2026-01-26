@@ -1,5 +1,5 @@
 const WhatsAppSupport = () => {
-  const phoneNumber = "5598984953526";
+  const phoneNumber = "5541984953526";
   const message = encodeURIComponent("Quero saber mais sobre a extensão Zyra Pro");
   const whatsappLink = `https://wa.me/${phoneNumber}?text=${message}`;
 

@@ -58,51 +58,6 @@ serve(async (req) => {
       );
     }
 
-    // Check for download rate limit (1 download every 5 days per extension)
-    const fiveDaysAgo = new Date();
-    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
-
-    // Check for download rate limit (2 downloads every 5 days per extension)
-    const MAX_DOWNLOADS = 2;
-    
-    const { data: recentDownloads, error: downloadsError } = await supabase
-      .from('license_logs')
-      .select('created_at')
-      .eq('license_id', license.id)
-      .eq('action', 'extension_download')
-      .gte('created_at', fiveDaysAgo.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(MAX_DOWNLOADS);
-
-    if (!downloadsError && recentDownloads && recentDownloads.length >= MAX_DOWNLOADS) {
-      // User has reached the limit, calculate when they can download again
-      const oldestDownloadInWindow = new Date(recentDownloads[recentDownloads.length - 1].created_at);
-      const nextAvailableDate = new Date(oldestDownloadInWindow);
-      nextAvailableDate.setDate(nextAvailableDate.getDate() + 5);
-      
-      const now = new Date();
-      const diffMs = nextAvailableDate.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-      const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
-
-      let waitMessage = '';
-      if (diffDays > 1) {
-        waitMessage = `${diffDays} dias`;
-      } else if (diffHours > 1) {
-        waitMessage = `${diffHours} horas`;
-      } else {
-        const diffMinutes = Math.ceil(diffMs / (1000 * 60));
-        waitMessage = `${diffMinutes} minutos`;
-      }
-
-      return new Response(
-        JSON.stringify({ 
-          error: `Limite de download atingido (${MAX_DOWNLOADS} downloads a cada 5 dias). Aguarde ${waitMessage} para baixar novamente.`,
-          nextAvailable: nextAvailableDate.toISOString()
-        }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     // Get extension configuration
     const extension = extensions[extensionId];

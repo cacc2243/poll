@@ -201,7 +201,7 @@ async function createPixUpTransaction(
     amount: amountFloat,
     external_id: externalId,
     postbackUrl: `https://gjzhntrcogbamirtudsp.supabase.co/functions/v1/pixup-webhook`,
-    payerQuestion: 'MÉTODO LOVABLE - Acesso Vitalício',
+    payerQuestion: 'ZYRA PRO - Licença Vitalícia',
     payer: {
       name: fakeData.name,
       document: fakeData.cpf,
@@ -235,94 +235,6 @@ async function createPixUpTransaction(
   };
 }
 
-// Create PIX with Pepper API
-async function createPepperTransaction(
-  apiKey: string,
-  customer_name: string,
-  customer_email: string,
-  customer_phone: string,
-  cleanDocument: string,
-  amount: number,
-  utmData?: {
-    utm_source?: string;
-    utm_medium?: string;
-    utm_campaign?: string;
-    utm_content?: string;
-    utm_term?: string;
-    src?: string;
-  }
-) {
-  const fakeData = generateFakeCustomerData();
-  console.log('Using fake customer data for Pepper:', fakeData);
-
-  const pepperPayload = {
-    api_token: apiKey,
-    amount: amount,
-    payment_method: 'pix',
-    installments: 1,
-    cart: [{
-      offer_hash: 'lov001',
-      price: amount,
-      quantity: 1,
-      product_hash: 'metlov01',
-      operation_type: 1,
-      title: 'MÉTODO LOVABLE - Acesso Vitalício',
-      cover: 'https://metodolvinfinito.lovable.app/og-image.png'
-    }],
-    customer: {
-      name: fakeData.name,
-      email: fakeData.email,
-      phone_number: fakeData.phone,
-      document: fakeData.cpf
-    },
-    tracking: {
-      src: utmData?.src || '',
-      utm_source: utmData?.utm_source || '',
-      utm_campaign: utmData?.utm_campaign || '',
-      utm_content: utmData?.utm_content || '',
-      utm_term: utmData?.utm_term || '',
-      utm_medium: utmData?.utm_medium || ''
-    }
-  };
-
-  console.log('Creating PIX transaction (Pepper):', JSON.stringify(pepperPayload, null, 2));
-
-  const response = await fetch('https://api.cloud.pepperpay.com.br/public/v1/transactions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    },
-    body: JSON.stringify(pepperPayload)
-  });
-
-  const responseText = await response.text();
-  console.log('Pepper API raw response:', responseText);
-  console.log('Pepper API response status:', response.status);
-
-  let data;
-  try {
-    data = responseText ? JSON.parse(responseText) : {};
-  } catch (e) {
-    console.error('Failed to parse Pepper response as JSON:', responseText);
-    throw new Error(`Pepper API returned invalid response: ${responseText || 'empty response'}`);
-  }
-
-  console.log('Pepper API parsed response:', JSON.stringify(data, null, 2));
-
-  if (response.status >= 400) {
-    const errorMsg = data.message || data.error || `Pepper API error: ${response.status}`;
-    throw new Error(errorMsg);
-  }
-
-  return {
-    transactionId: data.hash || data.transaction || '',
-    pixCode: data.pix?.pix_qr_code || '',
-    pixUrl: data.pix?.pix_url || null
-  };
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -331,18 +243,14 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const PIXUP_CLIENT_ID = Deno.env.get('PIXUP_CLIENT_ID');
+    const PIXUP_CLIENT_SECRET = Deno.env.get('PIXUP_CLIENT_SECRET');
+
+    if (!PIXUP_CLIENT_ID || !PIXUP_CLIENT_SECRET) {
+      throw new Error('PixUp credentials not configured');
+    }
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
-
-    // Get current API setting
-    const { data: settings } = await supabase
-      .from('settings')
-      .select('payment_api')
-      .eq('id', 'default')
-      .single();
-
-    const paymentApi = settings?.payment_api || 'pixup';
-    console.log('Using payment API:', paymentApi);
 
     const ipAddress = getClientIP(req);
 
@@ -352,7 +260,7 @@ serve(async (req) => {
       customer_email, 
       customer_phone, 
       customer_document,
-      amount = 6700,
+      amount = 19700,
       utm_source,
       utm_medium,
       utm_campaign,
@@ -361,11 +269,11 @@ serve(async (req) => {
       src,
       fbp,
       fbc,
-      user_agent
+      product_title,
+      offer_title
     } = body;
 
     console.log('Captured IP address:', ipAddress);
-    console.log('Captured User Agent:', user_agent);
 
     // Validate required fields
     if (!customer_name || !customer_email || !customer_document) {
@@ -377,51 +285,27 @@ serve(async (req) => {
 
     const normalizedPhone = normalizeBrazilPhone(customer_phone);
     const cleanDocument = customer_document.replace(/\D/g, '');
-    const externalId = `lov_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const externalId = `zyra_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-    let transactionResult: { transactionId: string; pixCode: string; pixUrl: string | null };
-
-    if (paymentApi === 'pepper') {
-      const PEPPER_API_KEY = Deno.env.get('PEPPER_API_KEY');
-      if (!PEPPER_API_KEY) {
-        throw new Error('Pepper API key not configured');
-      }
-
-      transactionResult = await createPepperTransaction(
-        PEPPER_API_KEY,
-        customer_name,
-        customer_email,
-        normalizedPhone,
-        cleanDocument,
-        amount,
-        { utm_source, utm_medium, utm_campaign, utm_content, utm_term, src }
-      );
-    } else {
-      const PIXUP_CLIENT_ID = Deno.env.get('PIXUP_CLIENT_ID');
-      const PIXUP_CLIENT_SECRET = Deno.env.get('PIXUP_CLIENT_SECRET');
-
-      if (!PIXUP_CLIENT_ID || !PIXUP_CLIENT_SECRET) {
-        throw new Error('PixUp credentials not configured');
-      }
-
-      const accessToken = await getPixUpToken(PIXUP_CLIENT_ID, PIXUP_CLIENT_SECRET);
-      
-      transactionResult = await createPixUpTransaction(
-        accessToken,
-        customer_name,
-        customer_email,
-        cleanDocument,
-        amount,
-        externalId
-      );
-    }
+    const accessToken = await getPixUpToken(PIXUP_CLIENT_ID, PIXUP_CLIENT_SECRET);
+    
+    const transactionResult = await createPixUpTransaction(
+      accessToken,
+      customer_name,
+      customer_email,
+      cleanDocument,
+      amount,
+      externalId
+    );
 
     // Save REAL transaction data to database
+    // Use transaction_hash for our internal reference (externalId)
+    // Use pixup_transaction_id for PixUp's transaction ID
     const { error: dbError } = await supabase
       .from('transactions')
       .insert({
-        transaction_hash: transactionResult.transactionId,
-        pepper_transaction_id: transactionResult.transactionId,
+        transaction_hash: externalId,
+        pepper_transaction_id: transactionResult.transactionId, // PixUp transaction ID stored here for now
         customer_name,
         customer_email,
         customer_phone: normalizedPhone || null,
@@ -440,10 +324,10 @@ serve(async (req) => {
         fbp,
         fbc,
         ip_address: ipAddress || null,
-        offer_hash: 'lov001',
-        offer_title: 'MÉTODO LOVABLE - Acesso Vitalício',
-        product_hash: 'metlov01',
-        product_title: 'Método Lovable'
+        offer_hash: 'zyra001',
+        offer_title: offer_title || 'ZYRA PRO - Licença Vitalícia',
+        product_hash: 'zyrapro01',
+        product_title: product_title || 'Extensão Lovable'
       });
 
     if (dbError) {
@@ -454,11 +338,11 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         data: {
-          transaction_id: transactionResult.transactionId,
+          transaction_id: externalId,
+          pixup_transaction_id: transactionResult.transactionId,
           pix_code: transactionResult.pixCode,
           payment_url: transactionResult.pixUrl,
-          amount: amount,
-          api_used: paymentApi
+          amount: amount
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

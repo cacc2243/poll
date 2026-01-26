@@ -1,5 +1,6 @@
-import { Puzzle, LogIn } from "lucide-react";
+import { Check, LogIn } from "lucide-react";
 import { useState, useEffect } from "react";
+import zyraLogoSmall from "@/assets/zyra-logo-small.png";
 
 const StickyBar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -43,25 +44,32 @@ const StickyBar = () => {
       <div className="container py-2">
         <div className="flex items-center justify-center gap-2">
           {isScrolled ? (
-            <a 
-              href="/lov-acesso" 
-              className="inline-flex items-center gap-2 px-5 py-1.5 rounded-full transition-all duration-300 hover:scale-105"
-              style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                backdropFilter: 'blur(10px)',
-              }}
-            >
-              <LogIn className="w-4 h-4 text-white" />
-              <span className="text-sm font-medium text-white">
-                Acesse a área de membros
-              </span>
-            </a>
+            <div className="flex items-center justify-between w-full max-w-md">
+              <img 
+                src={zyraLogoSmall} 
+                alt="Zyra" 
+                className="h-7 w-auto"
+              />
+              <a 
+                href="/membros"
+                className="inline-flex items-center gap-2 px-5 py-1.5 rounded-full transition-all duration-300 hover:scale-105"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  backdropFilter: 'blur(10px)',
+                }}
+              >
+                <LogIn className="w-4 h-4 text-white" />
+                <span className="text-sm font-medium text-white">
+                  Área de membros
+                </span>
+              </a>
+            </div>
           ) : (
             <>
-              <Puzzle className="w-4 h-4 text-white" />
+              <Check className="w-4 h-4 text-white" />
               <p className="sm:text-sm font-light text-sm text-white">
-                O ÚNICO 100% FUNCIONAL
+                O ÚNICO 100% ILIMITADO
               </p>
             </>
           )}

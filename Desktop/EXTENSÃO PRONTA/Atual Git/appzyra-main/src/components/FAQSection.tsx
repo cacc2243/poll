@@ -166,7 +166,7 @@ const FAQSection = () => {
           >
             <p className="text-sm text-white/40 mb-3">Ainda tem dúvidas?</p>
             <a
-              href="https://wa.me/5511999999999"
+              href="https://wa.me/5541984953526"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 text-white/70 text-sm font-medium hover:bg-white/10 hover:text-white hover:border-white/20 transition-all"

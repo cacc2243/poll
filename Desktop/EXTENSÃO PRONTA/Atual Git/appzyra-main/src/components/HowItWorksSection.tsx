@@ -34,7 +34,7 @@ const HowItWorksSection = () => {
             <img 
               src={zyraExtensionPreview} 
               alt="Zyra Extension Preview" 
-              className="w-56 sm:w-64 md:w-80 h-auto object-contain"
+              className="w-44 sm:w-52 md:w-64 h-auto object-contain"
             />
           </div>
           

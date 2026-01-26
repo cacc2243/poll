@@ -16,6 +16,7 @@ import zyraProLogoWhite from "@/assets/zyra-pro-logo-white.png";
 import googleAiIcon from "@/assets/google-ai-icon.png";
 import v0IconWhite from "@/assets/v0-icon-white.png";
 import lovableColorIcon from "@/assets/lovable-color-icon.png";
+import manusIcon from "@/assets/ico-manus-2.png";
 import { trackInitiateCheckout, trackPixGerado, trackPurchase, setAdvancedMatching } from "@/hooks/useFacebookPixel";
 const features = [{
   text: "1 Ativação de Licença"
@@ -40,6 +41,28 @@ const orderBumps: {
   badgeColor?: 'primary' | 'amber' | 'blue';
 }[] = [
   {
+    id: 'licenca-v0',
+    name: 'Licença Extensão V0.dev',
+    subtitle: 'Versão Beta',
+    description: 'Licença extensão V0.DEV ilimitada, versão Beta plenamente funcional.',
+    price: 6700,
+    originalPrice: 14700,
+    image: '',
+    badge: 'ACESSO ANTECIPADO',
+    badgeColor: 'blue'
+  },
+  {
+    id: 'licenca-manus',
+    name: 'Licença Extensão Manus AI',
+    subtitle: 'Versão Beta',
+    description: 'Licença extensão Manus AI ilimitada, versão Beta plenamente funcional.',
+    price: 6700,
+    originalPrice: 14700,
+    image: '',
+    badge: 'ACESSO ANTECIPADO',
+    badgeColor: 'blue'
+  },
+  {
     id: 'metodo-google-ai',
     name: 'Método Google AI Ultra',
     subtitle: '45.000 Créditos (INFINITO)',
@@ -60,17 +83,6 @@ const orderBumps: {
     image: '',
     badge: 'NOVO',
     badgeColor: 'amber'
-  },
-  {
-    id: 'licenca-v0',
-    name: 'Licença Extensão V0.dev',
-    subtitle: 'Versão Beta',
-    description: 'Extensão do V0.dev, ainda na versão beta.',
-    price: 14700,
-    originalPrice: 29700,
-    image: '',
-    badge: 'ACESSO ANTECIPADO',
-    badgeColor: 'blue'
   }
 ];
 interface PixData {
@@ -96,8 +108,8 @@ const productConfigs: Record<string, { name: string; title: string; price: numbe
   lovable: {
     name: 'Extensão Zyra Pro | Lovable',
     title: 'Zyra Pro Lovable',
-    price: 19700,
-    originalPrice: 29700,
+    price: 10700,
+    originalPrice: 19700,
     type: 'extension',
     icon: 'zyra',
     subtitle: 'Licença Vitalícia',
@@ -105,8 +117,8 @@ const productConfigs: Record<string, { name: string; title: string; price: numbe
   v0: {
     name: 'Extensão Zyra Pro | V0.dev',
     title: 'Zyra Pro V0',
-    price: 14700,
-    originalPrice: 29700,
+    price: 6700,
+    originalPrice: 14700,
     type: 'extension',
     icon: 'v0',
     subtitle: 'Acesso Beta Antecipado',
@@ -114,8 +126,8 @@ const productConfigs: Record<string, { name: string; title: string; price: numbe
   manus: {
     name: 'Extensão Zyra Pro | Manus AI',
     title: 'Zyra Pro Manus',
-    price: 14700,
-    originalPrice: 29700,
+    price: 6700,
+    originalPrice: 14700,
     type: 'extension',
     icon: 'manus',
     subtitle: 'Acesso Beta Antecipado',
@@ -583,6 +595,7 @@ const Checkout = () => {
                                   bump.id === 'metodo-google-ai' ? googleAiIcon :
                                   bump.id === 'metodo-conta-pro' ? lovableColorIcon :
                                   bump.id === 'licenca-v0' ? v0IconWhite :
+                                  bump.id === 'licenca-manus' ? manusIcon :
                                   zyraLogoIcon
                                 } 
                                 alt={bump.name} 
@@ -848,6 +861,7 @@ const Checkout = () => {
                                         bump.id === 'metodo-google-ai' ? googleAiIcon :
                                         bump.id === 'metodo-conta-pro' ? lovableColorIcon :
                                         bump.id === 'licenca-v0' ? v0IconWhite :
+                                        bump.id === 'licenca-manus' ? manusIcon :
                                         zyraLogoIcon
                                       } 
                                       alt={bump.name} 
@@ -875,7 +889,15 @@ const Checkout = () => {
                       );
                     })()}
 
-                    <Button onClick={handleGeneratePix} disabled={loading} className="w-full h-12 text-sm font-semibold bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white rounded-xl shadow-lg shadow-primary/25">
+                    <Button 
+                      onClick={handleGeneratePix} 
+                      disabled={loading} 
+                      className="w-full h-14 text-base font-semibold text-white rounded-xl transition-all hover:scale-[1.02] hover:shadow-2xl"
+                      style={{
+                        background: 'linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 71% 45%) 100%)',
+                        boxShadow: '0 8px 32px hsl(142 76% 36% / 0.35)',
+                      }}
+                    >
                       {loading ? <>
                           <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                           Gerando PIX...
@@ -960,8 +982,10 @@ const Checkout = () => {
                         const bumpIcon = bump.id === 'metodo-google-ai' ? googleAiIcon :
                                          bump.id === 'metodo-conta-pro' ? lovableColorIcon :
                                          bump.id === 'licenca-v0' ? v0IconWhite :
+                                         bump.id === 'licenca-manus' ? manusIcon :
                                          zyraLogoIcon;
                         const isV0Bump = bump.id === 'licenca-v0';
+                        const isManusBump = bump.id === 'licenca-manus';
                         return <div key={bumpId} className="flex gap-3 items-center">
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isV0Bump ? 'bg-black' : 'bg-gradient-to-br from-primary/20 to-accent/10'}`}>
                                   <img src={bumpIcon} alt={bump.name} className="w-5 h-5 object-contain" />

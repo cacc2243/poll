@@ -25,8 +25,8 @@ interface WistiaVideoProps {
 const WistiaVideo = ({
   aspectRatio = "5:4",
   mediaId = DEFAULT_MEDIA_ID,
-  overlayTitle = "VEJA O FUNCIONAMENTO REAL",
-  overlaySubtitle = "Entenda como funciona a extensão"
+  overlayTitle = "SEU VÍDEO VAI COMEÇAR",
+  overlaySubtitle = "TOQUE PARA ASSISTIR"
 }: WistiaVideoProps) => {
   const PLAYER_ELEMENT_ID = `wistia-player-${mediaId}`;
   const getAspectConfig = () => {
@@ -47,8 +47,9 @@ const WistiaVideo = ({
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [showControls, setShowControls] = useState(true);
+  const [showControls, setShowControls] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1.1);
+  const [isMobile, setIsMobile] = useState(false);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const playerRef = useRef<WistiaPlayerElement | null>(null);
   const shouldAutoplayRef = useRef(false);
@@ -58,6 +59,16 @@ const WistiaVideo = ({
     if (!duration) return 0;
     return Math.min(100, Math.max(0, currentTime / duration * 100));
   }, [currentTime, duration]);
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.matchMedia('(max-width: 768px)').matches || 'ontouchstart' in window);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   useEffect(() => {
     if (!hasStarted) return;
 
@@ -181,9 +192,9 @@ const WistiaVideo = ({
     setShowControls(true);
     if (controlsTimeoutRef.current) window.clearTimeout(controlsTimeoutRef.current);
     controlsTimeoutRef.current = window.setTimeout(() => {
-      // on desktop, hide controls while playing
+      // Hide controls after timeout (3s on mobile, 2.5s on desktop)
       if (isPlaying) setShowControls(false);
-    }, 2500);
+    }, isMobile ? 3000 : 2500);
   };
   const togglePlay = () => {
     const player = playerRef.current;
@@ -240,13 +251,19 @@ const WistiaVideo = ({
     return (
       <div className="w-full mx-auto">
         <div
-          className="relative rounded-2xl overflow-hidden cursor-pointer group bg-card border border-border/50"
+          className="relative rounded-2xl overflow-hidden cursor-pointer group bg-card p-[1px]"
+          style={{
+            background: 'linear-gradient(135deg, hsl(252 85% 67% / 0.2) 0%, hsl(280 70% 60% / 0.15) 50%, hsl(252 85% 67% / 0.2) 100%)',
+          }}
           onClick={handleStart}
-          style={{ paddingTop }}
           aria-label="Toque para ver o vídeo"
           role="button"
           tabIndex={0}
         >
+          <div 
+            className="relative rounded-2xl overflow-hidden bg-card"
+            style={{ paddingTop }}
+          >
           {/* Thumbnail with overlay */}
           <div
             className="absolute inset-0 bg-cover bg-center"
@@ -301,7 +318,7 @@ const WistiaVideo = ({
               {overlaySubtitle}
             </p>
           </div>
-
+          </div>
         </div>
       </div>
     );
@@ -323,13 +340,25 @@ const WistiaVideo = ({
 
       <div
         className="relative rounded-2xl overflow-hidden bg-card"
-        onMouseMove={showControlsForAWhile}
+        onMouseMove={() => {
+          if (!isMobile) showControlsForAWhile();
+        }}
         onMouseLeave={() => {
-          if (isPlaying) setShowControls(false);
+          if (!isMobile && isPlaying) setShowControls(false);
         }}
         onClick={() => {
-          showControlsForAWhile();
-          togglePlay();
+          if (isMobile) {
+            // On mobile, first tap shows controls, second tap toggles play
+            if (!showControls) {
+              showControlsForAWhile();
+            } else {
+              togglePlay();
+              showControlsForAWhile();
+            }
+          } else {
+            showControlsForAWhile();
+            togglePlay();
+          }
         }}
       >
         <div

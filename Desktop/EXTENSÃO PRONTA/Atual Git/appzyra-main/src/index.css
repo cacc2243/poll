@@ -195,10 +195,9 @@
 
   /* Premium card with soft glow */
   .card-premium {
-    @apply bg-card border border-border/60;
+    @apply bg-card border border-white/5;
     box-shadow: 
-      0 1px 3px hsl(0 0% 0% / 0.3),
-      0 8px 32px -8px hsl(var(--glow-primary) / 0.15);
+      0 1px 2px hsl(0 0% 0% / 0.1);
   }
 
   .card-premium:hover {
